@@ -16,34 +16,48 @@ virtualenv:
 	LC_ALL=en_US.UTF-8 python3 -m venv $(VIRTUALENV)
 	. $(VIRTUALENV)/bin/activate
 	pip install pip --upgrade
-	LC_ALL=en_US.UTF-8 ./virtualenv/bin/pip3 install -r requirements.txt
+	LC_ALL=en_US.UTF-8 ./virtualenv/bin/pip3 install -r requirements/python.txt
 	./virtualenv/bin/ansible-galaxy collection install azure.azcollection --force
 	./virtualenv/bin/pip3 install -r ~/.ansible/collections/ansible_collections/azure/azcollection/requirements-azure.txt
 	./virtualenv/bin/ansible-galaxy collection install community.okd
 
-.PHONY: help
+#
+# DOCKER IMAGE BUILDS
+#
+VERSION ?= latest
+docker.image:
+	docker build -t quay.io/mobb/ansible-aro:$(VERSION) .
 
-# docker.image:
-# 	docker build -t quay.io/pczar/ansible-rosa .
+docker.image.push:
+	docker push quay.io/mobb/ansible-aro:$(VERSION)
 
-# docker.image.push:
-# 	docker push quay.io/pczar/ansible-rosa
+docker.image.pull:
+	docker pull quay.io/mobb/ansible-aro:$(VERSION)
 
-# docker.image.pull:
-# 	docker pull quay.io/pczar/ansible-rosa
-
-# # docker shortcuts
-# build: docker.image
-# image: docker.image
-# push: docker.image.push
-# pull: docker.image.pull
-
-
+#
+# ANSIBLE PLAYBOOK RUNS
+#
 create:
 	$(ANSIBLE) -v create-cluster.yaml
 
+ARO_PULL_SECRET ?= $(HOME)/.azure/aro-pull-secret.txt
+docker.create:
+	docker run --rm \
+		-v $(ARO_PULL_SECRET):/home/ansible/aro-pull-secret.txt \
+		-v $(HOME)/.azure:/home/ansible/.azure \
+	  	-ti quay.io/mobb/ansible-aro:$(VERSION) \
+		$(ANSIBLE) -v -e az_aro_pull_secret=/home/ansible/aro-pull-secret.txt \
+			create-cluster.yaml
+
 delete:
 	$(ANSIBLE) -v delete-cluster.yaml
+
+docker.delete: image
+	docker run --rm \
+		-v $(HOME)/.ocm.json:/home/ansible/.ocm.json \
+		-v $(HOME)/.aws:/home/ansible/.aws \
+	  -ti quay.io/pczar/ansible-rosa \
+		$(ANSIBLE) -v delete-cluster.yaml
 
 create.private:
 	$(ANSIBLE) -v create-cluster.yaml -i ./environment/private/hosts
@@ -56,17 +70,3 @@ create.mobb-infra-aro:
 
 pull-secret:
 	$(ANSIBLE) -v pull-secret.yaml
-
-# docker.create: image
-# 	docker run --rm \
-# 		-v $(HOME)/.ocm.json:/home/ansible/.ocm.json \
-# 		-v $(HOME)/.aws:/home/ansible/.aws \
-# 	  -ti quay.io/pczar/ansible-rosa \
-# 		$(ANSIBLE) -v create-cluster.yaml
-
-# docker.delete: image
-# 	docker run --rm \
-# 		-v $(HOME)/.ocm.json:/home/ansible/.ocm.json \
-# 		-v $(HOME)/.aws:/home/ansible/.aws \
-# 	  -ti quay.io/pczar/ansible-rosa \
-# 		$(ANSIBLE) -v delete-cluster.yaml

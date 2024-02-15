@@ -1,3 +1,6 @@
 ./virtualenv
 ./tmp
 ./staging
+./.vscode
+./docs
+./plugins/modules/__pycache__

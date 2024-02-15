@@ -2,3 +2,5 @@ virtualenv/*
 tmp/*
 bin/*
 pullsecret.txt
+.vscode
+plugins/modules/__pycache__

@@ -1,85 +1,77 @@
 #
 # BUILD IMAGE
 #
-FROM fedora:33 as build
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.3-1552 as build
 
 ENV HOME=/home/ansible
 
 # install required build packages
-RUN dnf -y install \
-    bash \
-    gcc \
-    musl-devel \
-    libffi-devel \
-    git \
-    gpgme-devel \
-    libxml2-devel \
-    libxslt-devel \
-    curl \
-    cargo \
-    openssl-devel \
-    python-devel \
-    unzip
-
-RUN groupadd ansible --g 1000 && useradd -s /bin/bash -g ansible -u 1000 ansible -d ${HOME}
-
-RUN mkdir -p /ansible/virtualenv && chown -R ansible:ansible /ansible
-
-USER ansible:ansible
-
-RUN mkdir -p ${HOME}/.local/bin
-
-WORKDIR /ansible
+RUN microdnf --setopt=install_weak_deps=0 --nodocs -y install \
+        bash \
+        gcc \
+        libffi-devel \
+        git \
+        gpgme-devel \
+        libxml2-devel \
+        libxslt-devel \
+        curl-minimal \
+        cargo \
+        openssl-devel \
+        python3-devel \
+        cmake \
+        gcc-c++ \
+        unzip && \
+    microdnf clean all
 
 # add other executables
-RUN curl -slL https://storage.googleapis.com/kubernetes-release/release/v1.18.3/bin/linux/amd64/kubectl \
-        -o kubectl && install kubectl ${HOME}/.local/bin/
-RUN curl -slL https://github.com/openshift/rosa/releases/download/v1.1.0/rosa-linux-amd64 \
-        -o rosa && install rosa ${HOME}/.local/bin/
-RUN curl -slL https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip \
-        -o awscli.zip && unzip awscli.zip && aws/install -i ${HOME}/.local/aws-cli -b /ansible/.local/bin
+RUN mkdir -p ${HOME}/.local/bin
+RUN curl -slL https://storage.googleapis.com/kubernetes-release/release/v1.29.2/bin/linux/amd64/kubectl \
+    -o kubectl && install kubectl ${HOME}/.local/bin/
 
-COPY ./requirements.txt /ansible/requirements.txt
+# copy content
+COPY . ${HOME}
 
-RUN python3 -m venv /ansible/virtualenv
-RUN /ansible/virtualenv/bin/python3 -m pip install --upgrade pip
-RUN /ansible/virtualenv/bin/pip3 install -r /ansible/requirements.txt
+# add python dependencies
+RUN python3 -m venv ${HOME}/virtualenv && \
+    ${HOME}/virtualenv/bin/python3 -m pip install --upgrade pip && \
+    ${HOME}/virtualenv/bin/pip3 install --no-cache-dir -r ${HOME}/requirements/python.txt
 
-COPY . /ansible
+# add ansible collection dependencies
+RUN ${HOME}/virtualenv/bin/ansible-galaxy collection install --force -r ${HOME}/requirements/ansible.yaml && \
+    ${HOME}/virtualenv/bin/pip3 install --no-cache-dir -r ${HOME}/.ansible/collections/ansible_collections/azure/azcollection/requirements-azure.txt
 
 #
 # RUNTIME IMAGE
 #
-FROM fedora:33
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.3-1552
 
 ENV HOME=/home/ansible
 
 # install required runtime packages
-RUN dnf -y install \
-    bash \
-    openssl \
-    unzip \
-    glibc \
-    groff
+        # unzip \
+        # glibc \
+RUN microdnf --setopt=install_weak_deps=0 --nodocs -y install \
+        bash \
+        openssl \
+        shadow-utils \
+        python3 && \
+    microdnf clean all
 
+# configure runtime user
 RUN groupadd ansible --g 1000 && useradd -s /bin/bash -g ansible -u 1000 ansible -d ${HOME}
-RUN mkdir -p /ansible/virtualenv && chown -R ansible:ansible /ansible
-
-# # copy executables from build image
-# COPY --from=build /usr/local/bin /usr/local/bin
-
-COPY --chown=ansible:ansible . /ansible
-COPY --chown=ansible:ansible --from=build ${HOME}/.local ${HOME}/.local
-COPY --chown=ansible:ansible --from=build /ansible/virtualenv /ansible/virtualenv
-
 USER ansible:ansible
 
-# # set pathing
-ENV PATH=${HOME}/.local/bin:./virtualenv/bin:/ansible/staging/bin:$PATH
-ENV PYTHONPATH=./virtualenv/lib/python3.8/site-packages/
-ENV ANSIBLE_PYTHON_INTERPRETER=./virtualenv/bin/python
-# # set kubeconfig and ansible options
-ENV KUBECONFIG=/ansible/staging/.kube/config
+# copy content to container
+COPY --chown=ansible:ansible . ${HOME}
+COPY --chown=ansible:ansible --from=build ${HOME} ${HOME}
+
+# set python pathing
+ENV PATH=${HOME}/.local/bin:${HOME}/virtualenv/bin:${HOME}/staging/bin:$PATH
+ENV PYTHONPATH=${HOME}/virtualenv/lib/python3.9/site-packages/
+ENV ANSIBLE_PYTHON_INTERPRETER=${HOME}/virtualenv/bin/python
+
+# set kubeconfig and ansible options
+ENV KUBECONFIG=${HOME}/staging/.kube/config
 ENV ANSIBLE_FORCE_COLOR=1
 
-WORKDIR /ansible
+WORKDIR ${HOME}
