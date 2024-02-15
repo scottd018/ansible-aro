@@ -1,14 +1,25 @@
 #
-# BUILD
+# BUILD IMAGE
 #
-
 FROM fedora:33 as build
 
 ENV HOME=/home/ansible
 
+# install required build packages
 RUN dnf -y install \
-    bash gcc musl-devel libffi-devel git gpgme-devel libxml2-devel \
-    libxslt-devel curl cargo openssl-devel python-devel unzip
+    bash \
+    gcc \
+    musl-devel \
+    libffi-devel \
+    git \
+    gpgme-devel \
+    libxml2-devel \
+    libxslt-devel \
+    curl \
+    cargo \
+    openssl-devel \
+    python-devel \
+    unzip
 
 RUN groupadd ansible --g 1000 && useradd -s /bin/bash -g ansible -u 1000 ansible -d ${HOME}
 
@@ -36,14 +47,20 @@ RUN /ansible/virtualenv/bin/pip3 install -r /ansible/requirements.txt
 
 COPY . /ansible
 
-
+#
+# RUNTIME IMAGE
+#
 FROM fedora:33
 
 ENV HOME=/home/ansible
 
-# # update the image
+# install required runtime packages
 RUN dnf -y install \
-    bash openssl unzip glibc groff
+    bash \
+    openssl \
+    unzip \
+    glibc \
+    groff
 
 RUN groupadd ansible --g 1000 && useradd -s /bin/bash -g ansible -u 1000 ansible -d ${HOME}
 RUN mkdir -p /ansible/virtualenv && chown -R ansible:ansible /ansible
