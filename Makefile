@@ -46,17 +46,17 @@ docker.create:
 		-v $(ARO_PULL_SECRET):/home/ansible/aro-pull-secret.txt \
 		-v $(HOME)/.azure:/home/ansible/.azure \
 	  	-ti quay.io/mobb/ansible-aro:$(VERSION) \
-		$(ANSIBLE) -v -e az_aro_pull_secret=/home/ansible/aro-pull-secret.txt \
+		$(ANSIBLE) -v -e azr_aro_pull_secret=/home/ansible/aro-pull-secret.txt \
 			create-cluster.yaml
 
 delete:
 	$(ANSIBLE) -v delete-cluster.yaml
 
-docker.delete: image
+docker.delete:
 	docker run --rm \
-		-v $(HOME)/.ocm.json:/home/ansible/.ocm.json \
-		-v $(HOME)/.aws:/home/ansible/.aws \
-	  -ti quay.io/pczar/ansible-rosa \
+		-v $(ARO_PULL_SECRET):/home/ansible/aro-pull-secret.txt \
+		-v $(HOME)/.azure:/home/ansible/.azure \
+	  	-ti quay.io/mobb/ansible-aro:$(VERSION) \
 		$(ANSIBLE) -v delete-cluster.yaml
 
 create.private:
@@ -70,3 +70,10 @@ create.mobb-infra-aro:
 
 pull-secret:
 	$(ANSIBLE) -v pull-secret.yaml
+
+docker.pull-secret:
+	docker run --rm \
+		-v $(ARO_PULL_SECRET):/home/ansible/aro-pull-secret.txt \
+		-v $(HOME)/.azure:/home/ansible/.azure \
+	  	-ti quay.io/mobb/ansible-aro:$(VERSION) \
+		$(ANSIBLE) -v pull-secret.yaml
