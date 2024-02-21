@@ -46,8 +46,7 @@ docker.create:
 		-v $(ARO_PULL_SECRET):/home/ansible/aro-pull-secret.txt \
 		-v $(HOME)/.azure:/home/ansible/.azure \
 	  	-ti quay.io/mobb/ansible-aro:$(VERSION) \
-		$(ANSIBLE) -v -e azr_aro_pull_secret=/home/ansible/aro-pull-secret.txt \
-			create-cluster.yaml
+		"source virtualenv/bin/activate && $(ANSIBLE) -v -e azr_aro_pull_secret=/home/ansible/aro-pull-secret.txt create-cluster.yaml"
 
 delete:
 	$(ANSIBLE) -v delete-cluster.yaml
@@ -57,7 +56,7 @@ docker.delete:
 		-v $(ARO_PULL_SECRET):/home/ansible/aro-pull-secret.txt \
 		-v $(HOME)/.azure:/home/ansible/.azure \
 	  	-ti quay.io/mobb/ansible-aro:$(VERSION) \
-		$(ANSIBLE) -v delete-cluster.yaml
+		"source virtualenv/bin/activate && $(ANSIBLE) -v -e azr_aro_pull_secret=/home/ansible/aro-pull-secret.txt delete-cluster.yaml"
 
 create.private:
 	$(ANSIBLE) -v create-cluster.yaml -i ./environment/private/hosts

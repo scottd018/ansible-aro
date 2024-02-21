@@ -23,11 +23,6 @@ RUN microdnf --setopt=install_weak_deps=0 --nodocs -y install \
         unzip && \
     microdnf clean all
 
-# add other executables
-RUN mkdir -p ${HOME}/.local/bin
-RUN curl -slL https://storage.googleapis.com/kubernetes-release/release/v1.29.2/bin/linux/amd64/kubectl \
-    -o kubectl && install kubectl ${HOME}/.local/bin/
-
 # copy content
 COPY . ${HOME}
 
@@ -64,11 +59,6 @@ USER ansible:ansible
 # copy content to container
 COPY --chown=ansible:ansible . ${HOME}
 COPY --chown=ansible:ansible --from=build ${HOME} ${HOME}
-
-# set python pathing
-ENV PATH=${HOME}/.local/bin:${HOME}/virtualenv/bin:${HOME}/staging/bin:$PATH
-ENV PYTHONPATH=${HOME}/virtualenv/lib/python3.9/site-packages/
-ENV ANSIBLE_PYTHON_INTERPRETER=${HOME}/virtualenv/bin/python
 
 # set kubeconfig and ansible options
 ENV KUBECONFIG=${HOME}/staging/.kube/config
