@@ -112,7 +112,7 @@
 
 - block:
     - name: get ad sp info
-      azure_rm_adserviceprincipal_info:
+      azure.azcollection.azure_rm_adserviceprincipal_info:
         display_name: "Azure Red Hat OpenShift RP"
         tenant: "{{ azr_tenant_id }}"
       register: _aro_rp_info
