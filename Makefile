@@ -2,9 +2,9 @@
 
 CLUSTER_NAME ?= ans-$(shell whoami)
 RESOURCE_GROUP ?= ans-$(shell whoami)-rg
-EXTRA_VARS ?= --extra-vars "azr_aro_cluster=$(CLUSTER_NAME) azr_resource_group=$(RESOURCE_GROUP)"
+EXTRA_VARS ?= --extra-vars 'azr_aro_cluster=$(CLUSTER_NAME) azr_resource_group=$(RESOURCE_GROUP)'
 
-VIRTUALENV ?= "./virtualenv/"
+VIRTUALENV ?= ./virtualenv
 ANSIBLE = $(VIRTUALENV)/bin/ansible-playbook $(EXTRA_VARS)
 
 .PHONY: help
@@ -46,7 +46,7 @@ docker.create:
 		-v $(ARO_PULL_SECRET):/home/ansible/aro-pull-secret.txt \
 		-v $(HOME)/.azure:/home/ansible/.azure \
 	  	-ti quay.io/mobb/ansible-aro:$(VERSION) \
-		"source virtualenv/bin/activate && $(ANSIBLE) -v -e azr_aro_pull_secret=/home/ansible/aro-pull-secret.txt create-cluster.yaml"
+		ansible-playbook $(EXTRA_VARS) -v -e azr_aro_pull_secret=/home/ansible/aro-pull-secret.txt create-cluster.yaml
 
 delete:
 	$(ANSIBLE) -v delete-cluster.yaml
@@ -56,7 +56,7 @@ docker.delete:
 		-v $(ARO_PULL_SECRET):/home/ansible/aro-pull-secret.txt \
 		-v $(HOME)/.azure:/home/ansible/.azure \
 	  	-ti quay.io/mobb/ansible-aro:$(VERSION) \
-		"source virtualenv/bin/activate && $(ANSIBLE) -v -e azr_aro_pull_secret=/home/ansible/aro-pull-secret.txt delete-cluster.yaml"
+		ansible-playbook $(EXTRA_VARS) -v -e azr_aro_pull_secret=/home/ansible/aro-pull-secret.txt delete-cluster.yaml
 
 create.private:
 	$(ANSIBLE) -v create-cluster.yaml -i ./environment/private/hosts
